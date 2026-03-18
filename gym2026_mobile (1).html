@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>GYM 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy:#3D4E5C;--orange:#F7941D;--orange-dim:#f7941d22;
+  --bg:#0f1318;--surface:#181e25;--surface2:#1f2830;--surface3:#263040;
+  --border:#2e3d4a;--border-light:#3a4f60;
+  --text:#e8edf2;--text-dim:#8da0b0;--text-muted:#566878;
+  --green:#34c97e;--green-dim:#34c97e22;
+  --red:#f05a5a;--red-dim:#f05a5a22;
+  --yellow:#f5c842;--yellow-dim:#f5c84222;
+  --blue:#5b9cf6;--blue-dim:#5b9cf622;
+  --radius:12px;--radius-sm:8px;
+  --bottom-nav: 64px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+
+/* ── TOPBAR ── */
+.topbar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:12px 16px 10px;
+  display:flex;align-items:center;gap:10px;
+  padding-top:max(12px, env(safe-area-inset-top));
+  flex-shrink:0;
+}
+.topbar-left{flex:1;}
+.topbar-tag{font-family:'DM Mono',monospace;font-size:9px;color:var(--orange);letter-spacing:2px;text-transform:uppercase;}
+.topbar-title{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--text);line-height:1.1;}
+.topbar-actions{display:flex;align-items:center;gap:8px;}
+.live-dot{display:inline-flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:9px;padding:4px 8px;border-radius:20px;background:var(--green-dim);color:var(--green);border:1px solid #34c97e33;}
+.live-dot .dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+.live-dot.offline{background:var(--red-dim);color:var(--red);border-color:#f05a5a33;}
+.live-dot.offline .dot{background:var(--red);animation:none;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+.icon-btn{width:36px;height:36px;border-radius:var(--radius-sm);background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;color:var(--text-dim);}
+
+/* ── STATS STRIP ── */
+.stats-strip{
+  display:flex;gap:8px;padding:10px 16px;
+  overflow-x:auto;flex-shrink:0;
+  scrollbar-width:none;
+}
+.stats-strip::-webkit-scrollbar{display:none;}
+.stat-chip{
+  flex-shrink:0;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:8px 12px;min-width:80px;
+}
+.stat-chip-val{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;}
+.stat-chip-lbl{font-size:9px;color:var(--text-muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;text-transform:uppercase;margin-top:1px;}
+.stat-chip.green .stat-chip-val{color:var(--green);}
+.stat-chip.orange .stat-chip-val{color:var(--orange);}
+.stat-chip.red .stat-chip-val{color:var(--red);}
+.stat-chip.blue .stat-chip-val{color:var(--blue);}
+
+/* ── FILTER STRIP ── */
+.filter-strip{
+  display:flex;gap:6px;padding:0 16px 10px;
+  overflow-x:auto;flex-shrink:0;
+  scrollbar-width:none;
+}
+.filter-strip::-webkit-scrollbar{display:none;}
+.filter-chip{
+  flex-shrink:0;display:inline-flex;align-items:center;gap:5px;
+  padding:5px 10px;border-radius:20px;
+  font-size:11px;font-weight:600;
+  border:1px solid var(--border);background:var(--surface2);
+  color:var(--text-muted);cursor:pointer;
+  font-family:'DM Mono',monospace;
+  transition:all 0.15s;
+}
+.filter-chip.active{border-color:var(--orange);background:var(--orange-dim);color:var(--orange);}
+.mini-avatar{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;font-family:'Syne',sans-serif;flex-shrink:0;}
+
+/* ── SCROLL AREA ── */
+.scroll-area{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  padding:0 0 calc(var(--bottom-nav) + 16px);
+  -webkit-overflow-scrolling:touch;
+}
+.scroll-area::-webkit-scrollbar{display:none;}
+
+/* ── CARDS ── */
+.group-label{
+  display:flex;align-items:center;gap:8px;
+  padding:12px 16px 6px;
+  position:sticky;top:0;background:var(--bg);z-index:5;
+}
+.group-avatar{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:10px;flex-shrink:0;}
+.group-person-name{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;}
+.group-person-role{font-size:11px;color:var(--text-muted);flex:1;}
+.group-cnt{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);background:var(--surface2);padding:2px 7px;border-radius:20px;}
+
+.cards-list{padding:0 16px;display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+
+/* ── SWIPE CARD ── */
+.swipe-wrapper{position:relative;overflow:hidden;border-radius:var(--radius);}
+.swipe-bg{
+  position:absolute;inset:0;border-radius:var(--radius);
+  display:flex;align-items:center;
+  font-size:20px;font-weight:700;
+  padding:0 20px;
+  pointer-events:none;
+}
+.swipe-bg.done-bg{background:var(--green);color:white;justify-content:flex-start;}
+.swipe-bg.undone-bg{background:var(--surface3);color:var(--text-muted);justify-content:flex-end;}
+
+.task-card{
+  position:relative;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:12px 14px;
+  cursor:pointer;transition:transform 0.05s;
+  touch-action:pan-y;
+  user-select:none;
+  will-change:transform;
+}
+.task-card.done{opacity:0.5;}
+.card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;}
+.card-checkbox{
+  width:20px;height:20px;border-radius:5px;
+  border:2px solid var(--border-light);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:1px;transition:all 0.15s;
+  background:transparent;
+}
+.card-checkbox.checked{background:var(--green);border-color:var(--green);}
+.card-checkbox.checked::after{content:'✓';color:white;font-size:11px;font-weight:700;}
+.card-title-text{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;flex:1;}
+.task-card.done .card-title-text{text-decoration:line-through;color:var(--text-muted);}
+.card-bottom{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;font-family:'DM Mono',monospace;white-space:nowrap;}
+.badge-critical{background:var(--red-dim);color:var(--red);border:1px solid #f05a5a33;}
+.badge-high{background:var(--orange-dim);color:var(--orange);border:1px solid #f7941d33;}
+.badge-medium{background:var(--yellow-dim);color:var(--yellow);border:1px solid #f5c84233;}
+.badge-low{background:var(--blue-dim);color:var(--blue);border:1px solid #5b9cf633;}
+.status-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;font-family:'DM Mono',monospace;}
+.status-dot{width:5px;height:5px;border-radius:50%;}
+.status-todo{background:var(--surface3);color:var(--text-muted);}
+.status-todo .status-dot{background:var(--text-muted);}
+.status-inprogress{background:var(--blue-dim);color:var(--blue);}
+.status-inprogress .status-dot{background:var(--blue);}
+.status-done{background:var(--green-dim);color:var(--green);}
+.status-done .status-dot{background:var(--green);}
+.status-blocked{background:var(--red-dim);color:var(--red);}
+.status-blocked .status-dot{background:var(--red);}
+.card-deadline{font-family:'DM Mono',monospace;font-size:9px;color:var(--text-muted);margin-left:auto;}
+.card-resp{font-size:11px;color:var(--text-muted);line-height:1.5;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+
+/* ── ADD TASK FAB ── */
+.fab{
+  position:fixed;right:16px;bottom:calc(var(--bottom-nav) + 16px);
+  width:52px;height:52px;border-radius:50%;
+  background:var(--orange);color:white;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;font-weight:300;
+  box-shadow:0 4px 20px #f7941d55;
+  cursor:pointer;z-index:90;
+  border:none;
+  transition:transform 0.15s;
+}
+.fab:active{transform:scale(0.92);}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  height:var(--bottom-nav);
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;
+  padding-bottom:env(safe-area-inset-bottom);
+  z-index:100;
+}
+.nav-tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;padding:8px 4px;
+  cursor:pointer;color:var(--text-muted);
+  transition:color 0.15s;font-size:9px;
+  font-family:'DM Mono',monospace;letter-spacing:0.5px;
+  text-transform:uppercase;
+}
+.nav-tab .nav-icon{font-size:20px;line-height:1;}
+.nav-tab.active{color:var(--orange);}
+
+/* ── BOARD VIEW ── */
+.board-scroll{display:flex;gap:12px;padding:12px 16px;overflow-x:auto;height:100%;align-items:flex-start;scrollbar-width:none;}
+.board-scroll::-webkit-scrollbar{display:none;}
+.board-col{min-width:220px;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);flex-shrink:0;}
+.board-col-hdr{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;}
+.col-dot{width:7px;height:7px;border-radius:50%;}
+.col-name{font-family:'Syne',sans-serif;font-weight:700;font-size:11px;}
+.col-cnt{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto;}
+.board-cards{padding:8px;display:flex;flex-direction:column;gap:6px;}
+.board-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;cursor:pointer;}
+.board-card.done{opacity:0.4;}
+.bc-title{font-size:12px;font-weight:500;margin-bottom:6px;line-height:1.4;}
+.board-card.done .bc-title{text-decoration:line-through;color:var(--text-muted);}
+.bc-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+
+/* ── PERSON VIEW ── */
+.person-card{
+  margin:8px 16px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;
+}
+.person-card-hdr{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;background:var(--surface2);
+  cursor:pointer;
+}
+.person-hdr-info{flex:1;}
+.person-hdr-name{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;}
+.person-hdr-role{font-size:11px;color:var(--text-muted);}
+.person-progress{display:flex;align-items:center;gap:8px;}
+.prog-bar{width:60px;height:5px;background:var(--surface3);border-radius:3px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--green);border-radius:3px;transition:width 0.4s;}
+.prog-pct{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);}
+.person-task-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-top:1px solid var(--border);
+  cursor:pointer;
+}
+.person-task-row:active{background:var(--surface2);}
+.ptr-info{flex:1;}
+.ptr-name{font-size:12px;font-weight:500;}
+.ptr-name.done-text{text-decoration:line-through;color:var(--text-muted);}
+.ptr-meta{display:flex;gap:5px;margin-top:3px;align-items:center;}
+
+/* ── DATES VIEW ── */
+.date-card{
+  margin:6px 16px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:12px 14px;
+  display:flex;gap:12px;align-items:center;
+}
+.date-num{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--orange-dim);color:var(--orange);
+  font-family:'Syne',sans-serif;font-weight:800;font-size:12px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.date-info{flex:1;}
+.date-desc{font-size:13px;font-weight:600;}
+.date-meta{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.date-badge{font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:20px;background:var(--orange-dim);color:var(--orange);border:1px solid #f7941d33;}
+
+/* ── TEAM VIEW ── */
+.team-card{
+  margin:6px 16px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;
+  display:flex;align-items:center;gap:12px;
+  cursor:pointer;
+}
+.team-card:active{background:var(--surface2);}
+.team-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:15px;flex-shrink:0;}
+.team-info{flex:1;}
+.team-name{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;}
+.team-role{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.team-tasks{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);text-align:right;}
+.team-edit-icon{color:var(--text-muted);font-size:16px;}
+.section-hdr{padding:14px 16px 6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;}
+
+/* ── SHEETS (bottom drawers) ── */
+.sheet-overlay{position:fixed;inset:0;background:#00000077;z-index:200;display:none;backdrop-filter:blur(4px);}
+.sheet-overlay.open{display:block;}
+.sheet{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--surface);border-radius:20px 20px 0 0;
+  border-top:1px solid var(--border-light);
+  z-index:201;
+  transform:translateY(100%);
+  transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  max-height:92vh;overflow-y:auto;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.sheet.open{transform:none;}
+.sheet-handle{width:36px;height:4px;background:var(--border-light);border-radius:2px;margin:12px auto 0;}
+.sheet-title{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;padding:14px 20px 0;}
+.sheet-body{padding:16px 20px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;}
+.field input,.field select,.field textarea{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:11px 12px;color:var(--text);
+  font-size:14px;font-family:'DM Sans',sans-serif;outline:none;
+  -webkit-appearance:none;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--orange);}
+.field select option{background:var(--surface);}
+.field textarea{resize:none;height:80px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.sheet-footer{display:flex;gap:8px;padding:0 20px 20px;}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:13px 16px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;transition:all 0.15s;flex:1;}
+.btn-primary{background:var(--orange);color:white;}
+.btn-primary:active{background:#e07d10;}
+.btn-ghost{background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid #f05a5a33;}
+
+/* ── SEARCH BAR ── */
+.search-bar{
+  display:flex;align-items:center;gap:8px;
+  margin:0 16px 10px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:9px 12px;
+}
+.search-bar input{background:none;border:none;outline:none;color:var(--text);font-size:13px;width:100%;font-family:'DM Sans',sans-serif;}
+.search-bar input::placeholder{color:var(--text-muted);}
+
+/* ── SETUP SCREEN ── */
+#setup-screen{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  z-index:500;padding:24px;flex-direction:column;gap:20px;
+}
+.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;width:100%;max-width:360px;}
+.setup-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--orange);margin-bottom:6px;text-align:center;}
+.setup-sub{font-size:12px;color:var(--text-muted);margin-bottom:20px;text-align:center;}
+.setup-step{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:13px;color:var(--text-muted);border-bottom:1px solid var(--border);}
+.setup-step:last-child{border:none;}
+.step-num{width:20px;height:20px;border-radius:50%;background:var(--surface3);color:var(--text-muted);font-family:'Syne',sans-serif;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.setup-step.active{color:var(--text);}
+.setup-step.active .step-num{background:var(--orange);color:white;}
+.setup-step.done{color:var(--green);}
+.setup-step.done .step-num{background:var(--green);color:white;}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin 0.8s linear infinite;margin:16px auto 0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── TOAST ── */
+.toast-wrap{position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:400;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;}
+.toast{background:var(--surface2);border:1px solid var(--border-light);border-radius:20px;padding:9px 16px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px #0006;animation:toastIn 0.25s ease;white-space:nowrap;}
+@keyframes toastIn{from{transform:translateY(-8px);opacity:0;}to{transform:none;opacity:1;}}
+.toast.success{border-color:#34c97e44;color:var(--green);}
+.toast.error{border-color:#f05a5a44;color:var(--red);}
+
+/* sync flash */
+.sync-bar{position:fixed;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--orange),var(--green));z-index:999;transform:scaleX(0);transform-origin:left;transition:transform 0.3s;}
+.sync-bar.active{transform:scaleX(1);}
+
+/* ── CLAUDE AI CHAT ── */
+.ai-sheet-overlay{position:fixed;inset:0;background:#00000077;z-index:200;display:none;backdrop-filter:blur(4px);}
+.ai-sheet-overlay.open{display:block;}
+.ai-sheet{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--surface);border-radius:20px 20px 0 0;
+  border-top:1px solid var(--border-light);
+  z-index:201;height:88vh;
+  transform:translateY(100%);
+  transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  display:flex;flex-direction:column;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.ai-sheet.open{transform:none;}
+.ai-sheet-handle{width:36px;height:4px;background:var(--border-light);border-radius:2px;margin:12px auto 0;flex-shrink:0;}
+.ai-sheet-header{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.ai-header-avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--orange),#e07d10);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+}
+.ai-header-info{flex:1;}
+.ai-header-name{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;}
+.ai-header-sub{font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;}
+.ai-close{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px;}
+
+.ai-messages{
+  flex:1;overflow-y:auto;padding:16px;
+  display:flex;flex-direction:column;gap:12px;
+  -webkit-overflow-scrolling:touch;
+}
+.ai-messages::-webkit-scrollbar{display:none;}
+
+.ai-msg{display:flex;gap:8px;align-items:flex-start;}
+.ai-msg.user{flex-direction:row-reverse;}
+.ai-msg-avatar{
+  width:26px;height:26px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:12px;
+}
+.ai-msg-avatar.claude{background:linear-gradient(135deg,var(--orange),#e07d10);}
+.ai-msg-avatar.user-av{background:var(--navy);font-family:'Syne',sans-serif;font-weight:700;font-size:10px;color:white;}
+.ai-bubble{
+  max-width:78%;padding:10px 13px;border-radius:14px;
+  font-size:13px;line-height:1.55;
+}
+.ai-msg.claude .ai-bubble{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px 14px 14px 14px;}
+.ai-msg.user .ai-bubble{background:var(--orange);color:white;border-radius:14px 4px 14px 14px;}
+.ai-bubble p{margin-bottom:6px;}
+.ai-bubble p:last-child{margin:0;}
+.ai-bubble ul{padding-left:16px;margin:4px 0;}
+.ai-bubble li{margin-bottom:3px;}
+.ai-bubble strong{font-weight:600;}
+
+.ai-typing{display:flex;gap:4px;padding:4px 0;}
+.ai-typing span{width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:typing 1.2s infinite;}
+.ai-typing span:nth-child(2){animation-delay:0.2s;}
+.ai-typing span:nth-child(3){animation-delay:0.4s;}
+@keyframes typing{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
+
+.ai-suggestions{
+  display:flex;gap:6px;padding:0 16px 10px;
+  overflow-x:auto;flex-shrink:0;scrollbar-width:none;
+}
+.ai-suggestions::-webkit-scrollbar{display:none;}
+.ai-suggestion{
+  flex-shrink:0;padding:6px 12px;border-radius:20px;
+  background:var(--surface2);border:1px solid var(--border);
+  font-size:11px;color:var(--text-dim);cursor:pointer;
+  white-space:nowrap;font-family:'DM Mono',monospace;
+  transition:all 0.15s;
+}
+.ai-suggestion:active{background:var(--orange-dim);border-color:var(--orange);color:var(--orange);}
+
+.ai-input-row{
+  display:flex;align-items:flex-end;gap:8px;
+  padding:10px 16px 16px;border-top:1px solid var(--border);flex-shrink:0;
+}
+.ai-input{
+  flex:1;background:var(--surface2);border:1px solid var(--border);
+  border-radius:20px;padding:10px 14px;color:var(--text);
+  font-size:13px;font-family:'DM Sans',sans-serif;outline:none;
+  resize:none;max-height:100px;min-height:40px;line-height:1.4;
+  -webkit-appearance:none;
+}
+.ai-input:focus{border-color:var(--orange);}
+.ai-send{
+  width:40px;height:40px;border-radius:50%;
+  background:var(--orange);border:none;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;cursor:pointer;flex-shrink:0;color:white;
+  transition:all 0.15s;
+}
+.ai-send:disabled{background:var(--surface3);color:var(--text-muted);}
+.ai-send:active:not(:disabled){transform:scale(0.9);}
+
+/* empty */
+.empty{text-align:center;padding:48px 20px;color:var(--text-muted);}
+.empty-icon{font-size:36px;margin-bottom:10px;}
+
+/* updated by */
+.updated-by-text{font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;margin-top:4px;}
+</style>
+</head>
+<body>
+
+<div class="sync-bar" id="sync-bar"></div>
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- SETUP -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">⛰ GYM 2026</div>
+    <div class="setup-sub">Connecting to live database…</div>
+    <div id="setup-steps">
+      <div class="setup-step active" id="step-1"><span class="step-num">1</span> Connecting to Supabase</div>
+      <div class="setup-step" id="step-2"><span class="step-num">2</span> Checking database</div>
+      <div class="setup-step" id="step-3"><span class="step-num">3</span> Loading team data</div>
+      <div class="setup-step" id="step-4"><span class="step-num">4</span> Starting real-time sync</div>
+    </div>
+    <div class="spinner"></div>
+    <div id="setup-error" style="color:var(--red);font-size:12px;margin-top:14px;display:none;text-align:center;"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;height:100%;display:none;flex-direction:column;">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-tag">Empower Ageing</div>
+      <div class="topbar-title">GYM 2026</div>
+    </div>
+    <div class="topbar-actions">
+      <div class="live-dot" id="live-dot"><span class="dot"></span><span id="live-lbl">Live</span></div>
+      <div class="icon-btn" onclick="toggleSearch()">⌕</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-strip" id="stats-strip"></div>
+
+  <!-- SEARCH (hidden by default) -->
+  <div class="search-bar" id="search-bar" style="display:none">
+    <span style="color:var(--text-muted)">⌕</span>
+    <input type="text" id="search-input" placeholder="Search tasks, people…" oninput="renderCurrentView()">
+  </div>
+
+  <!-- FILTER STRIP (list/board view) -->
+  <div class="filter-strip" id="filter-strip"></div>
+
+  <!-- SCROLL AREA -->
+  <div class="scroll-area" id="scroll-area">
+    <div id="view-content"></div>
+  </div>
+
+  <!-- FAB -->
+  <button class="fab" id="fab" onclick="openAddTask()">＋</button>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-tab active" id="nav-list" onclick="switchView('list',this)"><div class="nav-icon">☰</div>List</div>
+    <div class="nav-tab" id="nav-board" onclick="switchView('board',this)"><div class="nav-icon">⊞</div>Board</div>
+    <div class="nav-tab" id="nav-person" onclick="switchView('person',this)"><div class="nav-icon">👤</div>People</div>
+    <div class="nav-tab" id="nav-dates" onclick="switchView('dates',this)"><div class="nav-icon">📅</div>Dates</div>
+    <div class="nav-tab" id="nav-team" onclick="switchView('team',this)"><div class="nav-icon">✦</div>Team</div>
+    <div class="nav-tab" id="nav-ai" onclick="openAI()"><div class="nav-icon">🤖</div>Ask AI</div>
+  </div>
+</div>
+
+<!-- CLAUDE AI SHEET -->
+<div class="ai-sheet-overlay" id="ai-overlay" onclick="closeAI(event)">
+  <div class="ai-sheet" id="ai-sheet">
+    <div class="ai-sheet-handle"></div>
+    <div class="ai-sheet-header">
+      <div class="ai-header-avatar">🤖</div>
+      <div class="ai-header-info">
+        <div class="ai-header-name">Claude — GYM 2026 Assistant</div>
+        <div class="ai-header-sub">Knows your team, tasks & event</div>
+      </div>
+      <button class="ai-close" onclick="closeAI()">✕</button>
+    </div>
+    <div class="ai-messages" id="ai-messages"></div>
+    <div class="ai-suggestions" id="ai-suggestions">
+      <div class="ai-suggestion" onclick="askSuggestion(this)">Who has critical tasks?</div>
+      <div class="ai-suggestion" onclick="askSuggestion(this)">What's overdue?</div>
+      <div class="ai-suggestion" onclick="askSuggestion(this)">Summarise Zac's tasks</div>
+      <div class="ai-suggestion" onclick="askSuggestion(this)">How many tasks are done?</div>
+      <div class="ai-suggestion" onclick="askSuggestion(this)">Who is working on AV?</div>
+      <div class="ai-suggestion" onclick="askSuggestion(this)">What needs to be done by Wk 4 Apr?</div>
+    </div>
+    <div class="ai-input-row">
+      <textarea class="ai-input" id="ai-input" placeholder="Ask anything about the team or tasks…" rows="1"
+        onkeydown="aiKeyDown(event)" oninput="autoResize(this)"></textarea>
+      <button class="ai-send" id="ai-send" onclick="sendAI()">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- TASK DETAIL SHEET -->
+<div class="sheet-overlay" id="task-overlay" onclick="closeTaskSheet(event)">
+  <div class="sheet" id="task-sheet">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px 0">
+      <div class="sheet-title" style="padding:0" id="sheet-task-title">Task</div>
+      <div id="sheet-check" onclick="toggleSheetTask()" style="width:24px;height:24px;border-radius:6px;border:2px solid var(--border-light);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;font-weight:700;"></div>
+    </div>
+    <div class="sheet-body" id="sheet-task-body"></div>
+    <div class="sheet-footer">
+      <button class="btn btn-danger" style="flex:0.6" onclick="deleteSheetTask()">Delete</button>
+      <button class="btn btn-ghost" style="flex:0.6" onclick="closeTaskSheet()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTaskSheet()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TASK SHEET -->
+<div class="sheet-overlay" id="add-task-overlay" onclick="closeAddTask(event)">
+  <div class="sheet" id="add-task-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">New Task</div>
+    <div class="sheet-body">
+      <div class="field"><label>Task Name</label><input type="text" id="nt-name" placeholder="e.g. Confirm venue permit"></div>
+      <div class="field"><label>Assigned To</label><select id="nt-person"></select></div>
+      <div class="field"><label>Responsibilities</label><textarea id="nt-resp" placeholder="Key responsibilities…"></textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Priority</label><select id="nt-priority"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+        <div class="field"><label>Status</label><select id="nt-status"><option value="todo">To Do</option><option value="inprogress">In Progress</option><option value="done">Done</option></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Deadline</label><input type="text" id="nt-deadline" placeholder="Wk 1 May"></div>
+        <div class="field"><label>Category</label><input type="text" id="nt-cat" placeholder="Operations"></div>
+      </div>
+      <div class="field"><label>Works With</label><input type="text" id="nt-workswith" placeholder="e.g. Calvin, Hazman"></div>
+      <div class="field"><label>Notes</label><input type="text" id="nt-notes" placeholder="Optional"></div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-ghost" onclick="closeAddTask()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitNewTask()">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MEMBER SHEET -->
+<div class="sheet-overlay" id="edit-member-overlay" onclick="closeEditMember(event)">
+  <div class="sheet" id="edit-member-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Edit Member</div>
+    <div class="sheet-body">
+      <div style="display:flex;justify-content:center;margin-bottom:16px;">
+        <div id="em-avatar" style="width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:22px;"></div>
+      </div>
+      <div class="field"><label>Name</label><input type="text" id="em-name" placeholder="Full name"></div>
+      <div class="field"><label>Role / Title</label><input type="text" id="em-role" placeholder="e.g. AV & Technical"></div>
+      <div class="field"><label>Avatar Colour</label>
+        <div id="em-colors" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;"></div>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-ghost" onclick="closeEditMember()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditMember()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MEMBER SHEET -->
+<div class="sheet-overlay" id="add-member-overlay" onclick="closeAddMember(event)">
+  <div class="sheet" id="add-member-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Add Member</div>
+    <div class="sheet-body">
+      <div class="field"><label>Name</label><input type="text" id="am-name" placeholder="Full name"></div>
+      <div class="field"><label>Role / Title</label><input type="text" id="am-role" placeholder="e.g. Logistics Lead"></div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-ghost" onclick="closeAddMember()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitNewMember()">Add Member</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════
+// SUPABASE
+// ══════════════════════════════════
+const SUPABASE_URL = 'https://jsqotlkkhtpiextasgsy.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcW90bGtraHRwaWV4dGFzZ3N5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjQwMDksImV4cCI6MjA4ODk0MDAwOX0.rYUj_cpk1-xT-NV9Nxo5Rsus3Kh22LV2kYYIu7tMhhA';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════════════════════════════
+// STATE
+// ══════════════════════════════════
+let people = [], tasks = [], keyDates = [];
+let currentView = 'list';
+let activeFilter = null;
+let sheetTaskId = null;
+let editMemberId = null;
+let selectedColor = null;
+
+const COLORS = [
+  {bg:'#f7941d',fg:'#fff'},{bg:'#3D4E5C',fg:'#fff'},{bg:'#34c97e',fg:'#fff'},
+  {bg:'#5b9cf6',fg:'#fff'},{bg:'#a78bfa',fg:'#fff'},{bg:'#f05a5a',fg:'#fff'},
+  {bg:'#f5c842',fg:'#222'},{bg:'#2ec4b6',fg:'#fff'},{bg:'#e07d10',fg:'#fff'},
+  {bg:'#60a5fa',fg:'#fff'},{bg:'#fb7185',fg:'#fff'},{bg:'#a3e635',fg:'#222'},
+];
+
+// ══════════════════════════════════
+// BOOT
+// ══════════════════════════════════
+async function boot() {
+  try {
+    setStep('step-1','active');
+    const { error } = await sb.from('gym2026_people').select('id').limit(1);
+    if (error && error.code === '42P01') { showErr('Run SQL setup first, then refresh.'); return; }
+    setStep('step-1','done'); setStep('step-2','active');
+
+    const { data: existing } = await sb.from('gym2026_people').select('id');
+    setStep('step-2','done'); setStep('step-3','active');
+
+    if (!existing || !existing.length) {
+      await seedData();
+      toast('Team data loaded ✓','success');
+    }
+    await loadAll();
+    setStep('step-3','done'); setStep('step-4','active');
+    subscribeRealtime();
+    setStep('step-4','done');
+
+    setTimeout(() => {
+      document.getElementById('setup-screen').style.display = 'none';
+      const app = document.getElementById('app');
+      app.style.display = 'flex';
+      renderAll();
+    }, 400);
+  } catch(e) { showErr(e.message); }
+}
+
+function setStep(id, state) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'setup-step ' + state;
+  if (state==='done') el.querySelector('.step-num').textContent = '✓';
+}
+
+function showErr(msg) {
+  const el = document.getElementById('setup-error');
+  el.style.display = 'block'; el.textContent = msg;
+}
+
+async function loadAll() {
+  const [{ data:p },{ data:t },{ data:d }] = await Promise.all([
+    sb.from('gym2026_people').select('*').order('name'),
+    sb.from('gym2026_tasks').select('*').order('created_at'),
+    sb.from('gym2026_dates').select('*').order('num'),
+  ]);
+  people = p||[]; tasks = t||[]; keyDates = d||[];
+}
+
+function subscribeRealtime() {
+  sb.channel('gym2026-mobile')
+    .on('postgres_changes',{event:'*',schema:'public',table:'gym2026_tasks'}, payload => {
+      flash();
+      if (payload.eventType==='INSERT') { tasks.push(payload.new); toast('New task added','success'); }
+      else if (payload.eventType==='UPDATE') { const i=tasks.findIndex(t=>t.id===payload.new.id); if(i>=0) tasks[i]=payload.new; }
+      else if (payload.eventType==='DELETE') { tasks=tasks.filter(t=>t.id!==payload.old.id); }
+      renderAll();
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'gym2026_people'}, payload => {
+      if (payload.eventType==='INSERT') { people.push(payload.new); toast(payload.new.name+' added','success'); }
+      else if (payload.eventType==='UPDATE') { const i=people.findIndex(p=>p.id===payload.new.id); if(i>=0) people[i]=payload.new; }
+      renderAll();
+    })
+    .subscribe(status => {
+      const dot = document.getElementById('live-dot');
+      const lbl = document.getElementById('live-lbl');
+      if (!dot) return;
+      if (status==='SUBSCRIBED') { dot.className='live-dot'; lbl.textContent='Live'; }
+      else if (status==='CHANNEL_ERROR') { dot.className='live-dot offline'; lbl.textContent='Offline'; }
+    });
+}
+
+async function seedData() {
+  const seedPeople = [
+    {id:'zac',name:'Zac',role:'Overall Coordinator',color_bg:'#f7941d',color_fg:'#fff'},
+    {id:'atisqa',name:'Atisqa',role:'Registration & ASUP',color_bg:'#3D4E5C',color_fg:'#fff'},
+    {id:'hazman',name:'Hazman',role:'AV & Technical',color_bg:'#34c97e',color_fg:'#fff'},
+    {id:'calvin',name:'Calvin',role:'Logistics (TOA)',color_bg:'#5b9cf6',color_fg:'#fff'},
+    {id:'hanafi',name:'Hanafi',role:'Site Management',color_bg:'#a78bfa',color_fg:'#fff'},
+    {id:'daniel',name:'Daniel',role:'Collaterals & Design',color_bg:'#f05a5a',color_fg:'#fff'},
+    {id:'donovan',name:'Donovan',role:'Manpower & Ushers',color_bg:'#f5c842',color_fg:'#222'},
+    {id:'bryan',name:'Bryan',role:'Emcee & Event MX',color_bg:'#2ec4b6',color_fg:'#fff'},
+    {id:'beverley',name:'Beverley',role:'Invitations & Emcee',color_bg:'#e07d10',color_fg:'#fff'},
+    {id:'dr_rakolben',name:'Dr Rakolben',role:'External & VIP Liaison',color_bg:'#60a5fa',color_fg:'#fff'},
+    {id:'norina',name:'Norina',role:'Internal Coordination',color_bg:'#fb7185',color_fg:'#fff'},
+  ];
+  await sb.from('gym2026_people').insert(seedPeople);
+
+  const T = (pid,ws,resp,cat,pri,dl,st,done,notes='',ww='') => ({person_id:pid,ws,resp,cat,priority:pri,deadline:dl,status:st,done,notes,works_with:ww,reports_to:'Zac',created_at:new Date().toISOString(),updated_at:new Date().toISOString()});
+  const seedTasks = [
+    T('zac','Programme & Flow','Oversee full event rundown; approve final programme; ensure smooth segment transitions','Management','Critical','Wk 1 May','inprogress',false,'Lead 2IC','All'),
+    T('zac','Performance Oversight','Confirm performance acts; manage performance order & timing; brief performers on protocol','Management','Critical','Wk 4 Apr','todo',false,'','Bryan, Hanafi'),
+    T('zac','Timeline Management','Build & maintain master event timeline; track milestones 1-7; call all rehearsals','Management','Critical','Ongoing','inprogress',false,'See Key Dates','All'),
+    T('zac','Manpower Final Approval','Final sign-off on manpower allocation; resolve day-of gaps; oversee Special Usher & Emcee','Management','High','Wk 1 May','todo',false,'','Donovan, Bryan'),
+    T('atisqa','Guest Registration Setup','Set up registration counters; prepare name tags & guest lists; manage check-in flow','Operations','Critical','Event Day','todo',false,'','Dr Rakolben'),
+    T('atisqa','ASUP System Coordination','Liaise with ASUP system; ensure all participant data is captured; prepare registration reports','Operations','High','Wk 4 Apr','todo',false,'','Norina'),
+    T('atisqa','GOH & VIP Check-in Lane','Dedicated VIP registration lane; escort GOH/VIP to holding area; brief ushers on VIP protocol','Operations','Critical','Event Day','todo',false,'Coordinate with Dr Rakolben','Dr Rakolben, Donovan'),
+    T('atisqa','Walk-in & Queue Management','Manage unexpected walk-ins; control queue flow; handle last-minute guest list changes','Operations','Medium','Event Day','todo',false,'','Donovan'),
+    T('hazman','Audio-Visual Setup','Coordinate AV equipment setup (mics, screens, projectors); run sound checks; manage AV crew','Technical','Critical','Wk 1 May','todo',false,'','Daniel, Vendor'),
+    T('hazman','Sound System Management','Oversee sound team; manage microphone allocation; monitor live audio','Technical','Critical','Event Day','todo',false,'Liaise with external vendor','Sound Team'),
+    T('hazman','Lighting Coordination','Brief lighting crew; set lighting cues per programme; confirm spotlight positions','Technical','High','Wk 1 May','todo',false,'','Hanafi'),
+    T('hazman','Technical Vendor Liaison','Point of contact for AV/sound/light vendor; confirm delivery, setup & strike schedule','Technical','High','Wk 3 Mar','done',true,'','Hanafi'),
+    T('hazman','Live Slides & Screen Ops','Receive final slides from Daniel; manage slide transitions live; prepare backup','Technical','High','Wk 1 May','todo',false,'','Daniel, Bryan'),
+    T('calvin','TOA Coordination','Manage Terms of Award logistics; ensure awards are correctly labelled, sequenced & ready','Logistics','Critical','Wk 4 Apr','todo',false,'','Atisqa'),
+    T('calvin','Carpet & Stage Setup','Coordinate carpet placement on stage; confirm stage layout with Hanafi; supervise setup crew','Logistics','High','Event Day-1','todo',false,'','Hanafi'),
+    T('calvin','Seat & Table Arrangement','Execute seating plan per floor plan; label reserved seats (GOH/VIP); manage seat changes','Logistics','High','Event Day-1','todo',false,'Work from floor plan','Hanafi, Dr Rakolben'),
+    T('calvin','Floor Plan Execution','Print & distribute floor plan; walk venue to verify all zones match plan; brief members','Logistics','High','Wk 1 May','todo',false,'','Hanafi, Donovan'),
+    T('calvin','Equipment & Props Inventory','Inventory and transport all event props; coordinate delivery & collection with vendors','Logistics','Medium','Event Day-1','todo',false,'','Hanafi'),
+    T('hanafi','Venue Setup Oversight','Supervise full venue setup; ensure all zones (stage, registration, booths, seating) are ready','Operations','Critical','Event Day-1','todo',false,'','Calvin, Hazman'),
+    T('hanafi','Booths Management','Assign & set up booths per floor plan; brief booth operators on rules & timing','Operations','High','Event Day-1','todo',false,'','Calvin, Vendor'),
+    T('hanafi','Floor Plan Ownership','Own the physical floor plan; direct volunteers on zone setup; adapt to last-minute changes','Operations','High','Wk 1 May','todo',false,'','Calvin, Donovan'),
+    T('hanafi','Site Vendor Coordination','Receive vendors on-site; ensure deliveries match PO; manage vendor access & timing','Operations','High','Event Day','todo',false,'','Hazman, Calvin'),
+    T('hanafi','Post-Event Teardown','Coordinate venue teardown; return borrowed equipment; ensure venue cleared within time','Operations','Medium','Event Day','todo',false,'','Calvin, Donovan'),
+    T('daniel','Poster Design','Design event poster (digital & print); get approval from Zac; submit for print by deadline','Creative','High','Wk 3 Mar','done',true,'','Beverley'),
+    T('daniel','Presentation Slides','Design all event slides (welcome, programme, awards, closing); format per brand guidelines','Creative','Critical','Wk 4 Apr','inprogress',false,'','Bryan, Hazman'),
+    T('daniel','Script Writing','Draft full event script (opening, segments, awards, closing); share with Bryan & Beverley','Creative','Critical','Wk 4 Apr','inprogress',false,'','Bryan, Beverley'),
+    T('daniel','Signages Production','Design & produce all event signages (directional, stage backdrop, booths, registration banner)','Creative','High','Wk 1 May','todo',false,'','Hanafi, Beverley'),
+    T('daniel','Print Vendor Liaison','Liaise with print vendor for posters & signages; confirm specs, quantities & delivery date','Creative','High','Wk 3 Mar','done',true,'','Hanafi'),
+    T('daniel','Event Photography Brief','Brief event photographer/videographer; plan key shots (GOH arrival, TOA, group photos)','Creative','Medium','Wk 1 May','todo',false,'','Beverley'),
+    T('donovan','Usher Recruitment & Briefing','Recruit sufficient ushers; conduct briefing on roles, dress code, positions & protocol','Manpower','High','Wk 4 Apr','todo',false,'','Norina'),
+    T('donovan','Usher Zone Positioning','Assign each usher to a specific zone; prepare positioning map','Manpower','High','Wk 1 May','todo',false,'','Hanafi, Calvin'),
+    T('donovan','Special Usher — GOH/VIP','Select & brief special ushers for GOH/VIP handling; escort protocol; work with Atisqa','Manpower','Critical','Wk 1 May','todo',false,'','Atisqa, Dr Rakolben'),
+    T('donovan','Volunteer Day-of Management','Manage day-of volunteers; assign tasks, track attendance, handle no-shows','Manpower','High','Event Day','todo',false,'','Norina'),
+    T('donovan','Crowd Flow Management','Direct audience to correct seating; manage movement during programme; control exits','Manpower','Medium','Event Day','todo',false,'','Hanafi, Atisqa'),
+    T('bryan','Emcee Duties','Host & emcee the event; deliver opening/closing; introduce speakers & segment transitions','Programme','Critical','Event Day','todo',false,'','Daniel, Beverley'),
+    T('bryan','Workato Automation Setup','Set up Workato workflows (attendee comms, reminders, data sync) — Singapore integration','Programme','High','Wk 2 Apr','inprogress',false,'Workato SG','Atisqa'),
+    T('bryan','PPT Master & Live Timing','Control PPT slides live; keep each section on schedule; signal Zac if behind/ahead','Programme','Critical','Event Day','todo',false,'','Hazman, Daniel'),
+    T('bryan','Script Rehearsal','Rehearse script with Beverley; flag unclear segments to Daniel; finalise version','Programme','High','Wk 1 May','todo',false,'','Beverley, Daniel'),
+    T('bryan','Programme Pacing','Monitor event pacing against master timeline; adjust ad-libs accordingly','Programme','High','Event Day','todo',false,'','Zac, Hazman'),
+    T('beverley','Invitation Design & Dispatch','Design invitation card (digital/print); maintain invite tracker; send to all guest categories','Creative','High','Wk 3 Mar','done',true,'','Dr Rakolben, Atisqa'),
+    T('beverley','RSVP Tracking','Manage RSVP responses; follow up on non-replies; provide final headcount to Atisqa & Calvin','Creative','High','Wk 4 Apr','inprogress',false,'','Atisqa, Dr Rakolben'),
+    T('beverley','Co-Emcee / Script Support','Support Bryan as co-emcee; cover segments if needed; rehearse together regularly','Creative','Medium','Wk 1 May','todo',false,'','Bryan, Daniel'),
+    T('beverley','Collaterals Proofreading','Proofread all collaterals — poster copy, signage text, slides content — before print/publish','Creative','Medium','Wk 4 Apr','todo',false,'','Daniel'),
+    T('dr_rakolben','GOH Management','Manage Guest of Honour invitation, confirmation, arrival, seating, and departure protocol','External','Critical','Event Day','todo',false,'','Atisqa, Donovan'),
+    T('dr_rakolben','VIP Guest Relations','Manage all VIP guests; coordinate special needs, dietary requirements, reserved seating','External','Critical','Event Day','todo',false,'','Atisqa, Calvin'),
+    T('dr_rakolben','EE Liaison','Coordinate with EE representatives; manage their registration, seating and programme updates','External','High','Wk 4 Apr','todo',false,'From Mega Grad list','Atisqa'),
+    T('dr_rakolben','Spartan & AYPN Coordination','Liaise with Spartan and AYPN contacts; send invitations; confirm attendance numbers','External','High','Wk 3 Mar','done',true,'From Mega Grad list','Beverley, Atisqa'),
+    T('dr_rakolben','Coaches & Special Guests','Invite & manage coaches and special guests; coordinate arrival times and seating','External','High','Wk 4 Apr','todo',false,'','Calvin, Atisqa'),
+    T('dr_rakolben','Parents & Youths','Manage parent/youth invitations; communicate event details, parking and dress code','External','Medium','Wk 4 Apr','todo',false,'','Beverley, Atisqa'),
+    T('dr_rakolben','Goodwill Ambassador','Act as goodwill ambassador during event; meet-and-greet all external guests','External','High','Event Day','todo',false,'Noted on whiteboard','All'),
+    T('norina','Staff Management','Manage staff deployment on event day; brief on duties, dress code & reporting time','Internal','High','Wk 1 May','todo',false,'','Donovan'),
+    T('norina','Volunteer Coordination','Recruit & manage volunteers; assign to workstreams; coordinate with Donovan on ushers','Internal','High','Wk 4 Apr','todo',false,'','Donovan'),
+    T('norina','Internal Communications','Send internal updates & reminders to all committee members; maintain group comms','Internal','Medium','Ongoing','inprogress',false,'','All'),
+    T('norina','Briefing Coordination','Schedule and minute all pre-event briefings; distribute action items post-meeting','Internal','Medium','Ongoing','inprogress',false,'','Zac'),
+    T('norina','Contingency & Welfare','Prepare contingency plans; manage committee welfare (meals, rest breaks) on event day','Internal','Medium','Event Day','todo',false,'','All'),
+  ];
+  await sb.from('gym2026_tasks').insert(seedTasks);
+
+  const seedDates = [
+    {num:1,description:'Initial planning complete',lead:'Zac',date:'16 March',notes:''},
+    {num:2,description:'Invitations & poster dispatched',lead:'Beverley / Daniel',date:'Wk 3 March',notes:'Print deadline'},
+    {num:3,description:'Registration opens',lead:'Atisqa',date:'Wk 1 Apr',notes:''},
+    {num:4,description:'Workato automation live',lead:'Bryan',date:'Wk 2 Apr',notes:''},
+    {num:5,description:'AV vendor confirmed',lead:'Hazman',date:'Wk 3 Mar',notes:''},
+    {num:6,description:'TOA logistics finalised',lead:'Calvin',date:'Wk 4 Apr',notes:''},
+    {num:7,description:'Usher briefing',lead:'Donovan',date:'Wk 4 Apr',notes:''},
+    {num:8,description:'Full dress rehearsal',lead:'Zac / Bryan',date:'Wk 1 May',notes:''},
+    {num:9,description:'EVENT DAY',lead:'All',date:'26 Sep 2026',notes:'Mount Faber'},
+  ];
+  await sb.from('gym2026_dates').insert(seedDates);
+}
+
+// ══════════════════════════════════
+// HELPERS
+// ══════════════════════════════════
+const getPerson = id => people.find(p=>p.id===id);
+const initials = name => (name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+
+function avatar(pid, size=32) {
+  const p = getPerson(pid);
+  if (!p) return '';
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${p.color_bg};color:${p.color_fg};display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:${size*0.38}px;flex-shrink:0">${initials(p.name)}</div>`;
+}
+
+function badge(priority) {
+  const cls = {Critical:'badge-critical',High:'badge-high',Medium:'badge-medium',Low:'badge-low'}[priority]||'badge-low';
+  return `<span class="badge ${cls}">${priority}</span>`;
+}
+
+function statusPill(status) {
+  const m = {todo:['status-todo','To Do'],inprogress:['status-inprogress','In Progress'],done:['status-done','Done'],blocked:['status-blocked','Blocked']};
+  const [cls,lbl] = m[status]||m.todo;
+  return `<span class="status-pill ${cls}"><span class="status-dot"></span>${lbl}</span>`;
+}
+
+function filteredTasks() {
+  const q = (document.getElementById('search-input')?.value||'').toLowerCase();
+  return tasks.filter(t => {
+    if (activeFilter && t.person_id !== activeFilter) return false;
+    if (q && !(t.ws||'').toLowerCase().includes(q) && !(t.resp||'').toLowerCase().includes(q) && !(getPerson(t.person_id)?.name||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+const flash = () => { const b=document.getElementById('sync-bar'); b.classList.add('active'); setTimeout(()=>b.classList.remove('active'),700); };
+
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-wrap').appendChild(el);
+  setTimeout(()=>el.remove(), 2800);
+}
+
+// ══════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════
+function renderAll() { renderStats(); renderFilters(); renderCurrentView(); }
+
+function renderStats() {
+  const total=tasks.length, done=tasks.filter(t=>t.done).length;
+  const crit=tasks.filter(t=>t.priority==='Critical'&&!t.done).length;
+  const inprog=tasks.filter(t=>t.status==='inprogress').length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('stats-strip').innerHTML = `
+    <div class="stat-chip"><div class="stat-chip-val">${total}</div><div class="stat-chip-lbl">Total</div></div>
+    <div class="stat-chip green"><div class="stat-chip-val">${done}</div><div class="stat-chip-lbl">${pct}% Done</div></div>
+    <div class="stat-chip red"><div class="stat-chip-val">${crit}</div><div class="stat-chip-lbl">Critical</div></div>
+    <div class="stat-chip blue"><div class="stat-chip-val">${inprog}</div><div class="stat-chip-lbl">Active</div></div>
+    <div class="stat-chip orange"><div class="stat-chip-val">${people.length}</div><div class="stat-chip-lbl">Members</div></div>`;
+}
+
+function renderFilters() {
+  if (currentView==='team'||currentView==='dates') { document.getElementById('filter-strip').innerHTML=''; return; }
+  document.getElementById('filter-strip').innerHTML =
+    `<span class="filter-chip${!activeFilter?' active':''}" onclick="setFilter(null)">All</span>` +
+    people.map(p=>`<span class="filter-chip${activeFilter===p.id?' active':''}" onclick="setFilter('${p.id}')"><div class="mini-avatar" style="background:${p.color_bg};color:${p.color_fg}">${initials(p.name)}</div>${p.name}</span>`).join('');
+}
+
+function setFilter(pid) { activeFilter = activeFilter===pid ? null : pid; renderAll(); }
+
+// ══════════════════════════════════
+// VIEW SWITCHING
+// ══════════════════════════════════
+function switchView(view, el) {
+  currentView = view;
+  document.querySelectorAll('.nav-tab').forEach(n=>n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const fab = document.getElementById('fab');
+  fab.style.display = (view==='team'||view==='dates') ? 'none' : 'flex';
+  renderFilters();
+  renderCurrentView();
+}
+
+function renderCurrentView() {
+  const c = document.getElementById('view-content');
+  if (currentView==='list') renderList(c);
+  else if (currentView==='board') renderBoard(c);
+  else if (currentView==='person') renderPerson(c);
+  else if (currentView==='dates') renderDates(c);
+  else if (currentView==='team') renderTeam(c);
+}
+
+// ══════════════════════════════════
+// LIST VIEW with swipe
+// ══════════════════════════════════
+function renderList(c) {
+  const ft = filteredTasks();
+  if (!ft.length) { c.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><div>No tasks match.</div></div>'; return; }
+
+  const groups = {};
+  people.forEach(p => { groups[p.id] = []; });
+  ft.forEach(t => { if (groups[t.person_id]) groups[t.person_id].push(t); });
+
+  let html = '';
+  people.forEach(p => {
+    const ptasks = groups[p.id];
+    if (!ptasks.length) return;
+    const done = ptasks.filter(t=>t.done).length;
+    html += `<div class="group-label">
+      <div class="group-avatar" style="background:${p.color_bg};color:${p.color_fg}">${initials(p.name)}</div>
+      <div>
+        <div class="group-person-name">${p.name}</div>
+        <div class="group-person-role">${p.role}</div>
+      </div>
+      <span class="group-cnt">${done}/${ptasks.length}</span>
+    </div>
+    <div class="cards-list">
+      ${ptasks.map(t=>`
+        <div class="swipe-wrapper" id="sw-${t.id}">
+          <div class="swipe-bg ${t.done?'undone-bg':'done-bg'}" id="sbg-${t.id}">${t.done?'↩':'✓'}</div>
+          <div class="task-card${t.done?' done':''}" id="tc-${t.id}"
+            onclick="openTask('${t.id}')"
+            ontouchstart="swipeStart(event,'${t.id}')"
+            ontouchmove="swipeMove(event,'${t.id}')"
+            ontouchend="swipeEnd(event,'${t.id}')">
+            <div class="card-top">
+              <div class="card-checkbox${t.done?' checked':''}" onclick="event.stopPropagation();toggleTask('${t.id}')"></div>
+              <div class="card-title-text">${t.ws}</div>
+            </div>
+            <div class="card-bottom">
+              ${badge(t.priority)}
+              ${statusPill(t.status)}
+              <span class="card-deadline">${t.deadline||''}</span>
+            </div>
+            ${t.resp?`<div class="card-resp">${t.resp}</div>`:''}
+          </div>
+        </div>`).join('')}
+      <div style="padding:4px 0">
+        <button class="btn btn-ghost" style="width:100%;font-size:12px;padding:9px;border-radius:var(--radius-sm)" onclick="openAddTaskFor('${p.id}')">＋ Add task for ${p.name}</button>
+      </div>
+    </div>`;
+  });
+  c.innerHTML = html;
+}
+
+// ══════════════════════════════════
+// SWIPE TO DONE
+// ══════════════════════════════════
+const swipeState = {};
+function swipeStart(e, id) {
+  const touch = e.touches[0];
+  swipeState[id] = { startX: touch.clientX, startY: touch.clientY, moved: false };
+}
+function swipeMove(e, id) {
+  const s = swipeState[id]; if (!s) return;
+  const touch = e.touches[0];
+  const dx = touch.clientX - s.startX;
+  const dy = Math.abs(touch.clientY - s.startY);
+  if (dy > 20) return; // vertical scroll
+  if (Math.abs(dx) > 8) { s.moved = true; e.preventDefault(); }
+  const clamped = Math.max(-80, Math.min(80, dx));
+  const card = document.getElementById('tc-'+id);
+  if (card) card.style.transform = `translateX(${clamped}px)`;
+}
+function swipeEnd(e, id) {
+  const s = swipeState[id]; if (!s) return;
+  const touch = e.changedTouches[0];
+  const dx = touch.clientX - s.startX;
+  const card = document.getElementById('tc-'+id);
+  if (card) { card.style.transition='transform 0.2s'; card.style.transform=''; setTimeout(()=>{if(card)card.style.transition='';},200); }
+  if (s.moved && Math.abs(dx) > 60) toggleTask(id);
+  delete swipeState[id];
+}
+
+// ══════════════════════════════════
+// BOARD VIEW
+// ══════════════════════════════════
+function renderBoard(c) {
+  const cols = [{key:'todo',label:'To Do',dot:'var(--text-muted)'},{key:'inprogress',label:'In Progress',dot:'var(--blue)'},{key:'done',label:'Done',dot:'var(--green)'},{key:'blocked',label:'Blocked',dot:'var(--red)'}];
+  const ft = filteredTasks();
+  c.innerHTML = `<div class="board-scroll">${cols.map(col=>{
+    const ct = ft.filter(t=>t.status===col.key);
+    return `<div class="board-col">
+      <div class="board-col-hdr"><div class="col-dot" style="background:${col.dot}"></div><span class="col-name">${col.label}</span><span class="col-cnt">${ct.length}</span></div>
+      <div class="board-cards">
+        ${ct.map(t=>`<div class="board-card${t.done?' done':''}" onclick="openTask('${t.id}')">
+          <div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:6px">
+            <div class="card-checkbox${t.done?' checked':''}" style="width:16px;height:16px;border-radius:4px;" onclick="event.stopPropagation();toggleTask('${t.id}')"></div>
+            <div class="bc-title">${t.ws}</div>
+          </div>
+          <div class="bc-meta">${badge(t.priority)}${avatar(t.person_id,16)}<span class="card-deadline" style="margin-left:auto">${t.deadline||''}</span></div>
+        </div>`).join('')}
+        ${!ct.length?`<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:16px">Empty</div>`:''}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ══════════════════════════════════
+// PERSON VIEW
+// ══════════════════════════════════
+function renderPerson(c) {
+  const ft = filteredTasks();
+  c.innerHTML = people.map(p=>{
+    const pt = ft.filter(t=>t.person_id===p.id);
+    if (!pt.length) return '';
+    const done = pt.filter(t=>t.done).length;
+    const pct = pt.length ? Math.round(done/pt.length*100) : 0;
+    return `<div class="person-card">
+      <div class="person-card-hdr" onclick="toggleSection('ps-${p.id}')">
+        <div class="team-avatar" style="background:${p.color_bg};color:${p.color_fg};width:36px;height:36px;font-size:14px">${initials(p.name)}</div>
+        <div class="person-hdr-info">
+          <div class="person-hdr-name">${p.name}</div>
+          <div class="person-hdr-role">${p.role}</div>
+        </div>
+        <div class="person-progress">
+          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+          <span class="prog-pct">${pct}%</span>
+        </div>
+      </div>
+      <div id="ps-${p.id}">
+        ${pt.map(t=>`<div class="person-task-row" onclick="openTask('${t.id}')">
+          <div class="card-checkbox${t.done?' checked':''}" style="width:18px;height:18px;border-radius:4px;" onclick="event.stopPropagation();toggleTask('${t.id}')"></div>
+          <div class="ptr-info">
+            <div class="ptr-name${t.done?' done-text':''}">${t.ws}</div>
+            <div class="ptr-meta">${badge(t.priority)}${statusPill(t.status)}<span class="card-deadline">${t.deadline||''}</span></div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display==='none' ? '' : 'none';
+}
+
+// ══════════════════════════════════
+// DATES VIEW
+// ══════════════════════════════════
+function renderDates(c) {
+  c.innerHTML = `<div style="padding:8px 0">
+    ${keyDates.map(d=>`<div class="date-card">
+      <div class="date-num">${d.num}</div>
+      <div class="date-info">
+        <div class="date-desc">${d.description}</div>
+        <div class="date-meta">${d.lead} · ${d.date}${d.notes?` · ${d.notes}`:''}</div>
+      </div>
+      ${d.date==='26 Sep 2026'?`<span class="date-badge">EVENT</span>`:''}
+    </div>`).join('')}
+  </div>`;
+}
+
+// ══════════════════════════════════
+// TEAM VIEW
+// ══════════════════════════════════
+function renderTeam(c) {
+  c.innerHTML = `
+    <div class="section-hdr">Team Members</div>
+    ${people.map(p=>{
+      const open = tasks.filter(t=>t.person_id===p.id&&!t.done).length;
+      const total = tasks.filter(t=>t.person_id===p.id).length;
+      return `<div class="team-card" onclick="openEditMember('${p.id}')">
+        <div class="team-avatar" style="background:${p.color_bg};color:${p.color_fg}">${initials(p.name)}</div>
+        <div class="team-info">
+          <div class="team-name">${p.name}</div>
+          <div class="team-role">${p.role}</div>
+        </div>
+        <div class="team-tasks">${open} open<br><span style="color:var(--text-muted)">${total} total</span></div>
+        <div class="team-edit-icon">›</div>
+      </div>`;
+    }).join('')}
+    <div style="padding:12px 16px">
+      <button class="btn btn-ghost" style="width:100%" onclick="openAddMember()">＋ Add Team Member</button>
+    </div>`;
+}
+
+// ══════════════════════════════════
+// TOGGLE TASK DONE
+// ══════════════════════════════════
+async function toggleTask(id) {
+  const t = tasks.find(t=>t.id===id);
+  if (!t) return;
+  t.done = !t.done;
+  t.status = t.done ? 'done' : 'todo';
+  renderAll();
+  flash();
+  const { error } = await sb.from('gym2026_tasks').update({ done:t.done, status:t.status, updated_at:new Date().toISOString() }).eq('id',id);
+  if (error) { toast('Save failed','error'); t.done=!t.done; t.status=t.done?'done':'todo'; renderAll(); }
+}
+
+// ══════════════════════════════════
+// TASK SHEET
+// ══════════════════════════════════
+function openTask(id) {
+  const t = tasks.find(t=>t.id===id);
+  if (!t) return;
+  sheetTaskId = id;
+  document.getElementById('sheet-task-title').textContent = t.ws;
+  const chk = document.getElementById('sheet-check');
+  chk.textContent = t.done ? '✓' : '';
+  chk.style.background = t.done ? 'var(--green)' : '';
+  chk.style.borderColor = t.done ? 'var(--green)' : '';
+  chk.style.color = 'white';
+
+  document.getElementById('sheet-task-body').innerHTML = `
+    <div class="field"><label>Assigned To</label>
+      <select id="st-person">${people.map(p=>`<option value="${p.id}"${p.id===t.person_id?' selected':''}>${p.name}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Task Name</label><input type="text" id="st-ws" value="${t.ws||''}"></div>
+    <div class="field"><label>Responsibilities</label><textarea id="st-resp">${t.resp||''}</textarea></div>
+    <div class="field-row">
+      <div class="field"><label>Priority</label>
+        <select id="st-priority">${['Critical','High','Medium','Low'].map(v=>`<option${v===t.priority?' selected':''}>${v}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="st-status">${[['todo','To Do'],['inprogress','In Progress'],['done','Done'],['blocked','Blocked']].map(([v,l])=>`<option value="${v}"${v===t.status?' selected':''}>${l}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Deadline</label><input type="text" id="st-deadline" value="${t.deadline||''}"></div>
+      <div class="field"><label>Works With</label><input type="text" id="st-workswith" value="${t.works_with||''}"></div>
+    </div>
+    <div class="field"><label>Notes</label><input type="text" id="st-notes" value="${t.notes||''}"></div>
+    ${t.updated_by?`<div class="updated-by-text">Last updated by ${t.updated_by}</div>`:''}
+  `;
+  openSheet('task-overlay','task-sheet');
+}
+
+function toggleSheetTask() {
+  if (!sheetTaskId) return;
+  toggleTask(sheetTaskId);
+  const t = tasks.find(t=>t.id===sheetTaskId);
+  if (!t) return;
+  const chk = document.getElementById('sheet-check');
+  chk.textContent = t.done ? '✓' : '';
+  chk.style.background = t.done ? 'var(--green)' : '';
+  chk.style.borderColor = t.done ? 'var(--green)' : 'var(--border-light)';
+}
+
+async function saveTaskSheet() {
+  if (!sheetTaskId) return;
+  const status = document.getElementById('st-status').value;
+  const updates = {
+    person_id: document.getElementById('st-person').value,
+    ws: document.getElementById('st-ws').value.trim(),
+    resp: document.getElementById('st-resp').value.trim(),
+    priority: document.getElementById('st-priority').value,
+    status, done: status==='done',
+    deadline: document.getElementById('st-deadline').value.trim(),
+    works_with: document.getElementById('st-workswith').value.trim(),
+    notes: document.getElementById('st-notes').value.trim(),
+    updated_at: new Date().toISOString(),
+  };
+  flash();
+  const { error } = await sb.from('gym2026_tasks').update(updates).eq('id', sheetTaskId);
+  if (error) { toast('Save failed','error'); return; }
+  const idx = tasks.findIndex(t=>t.id===sheetTaskId);
+  if (idx>=0) tasks[idx] = {...tasks[idx],...updates};
+  toast('Saved ✓','success');
+  closeSheet('task-overlay','task-sheet');
+  renderAll();
+}
+
+async function deleteSheetTask() {
+  if (!sheetTaskId) return;
+  if (!confirm('Delete this task?')) return;
+  const { error } = await sb.from('gym2026_tasks').delete().eq('id',sheetTaskId);
+  if (error) { toast('Delete failed','error'); return; }
+  tasks = tasks.filter(t=>t.id!==sheetTaskId);
+  toast('Deleted','info');
+  closeSheet('task-overlay','task-sheet');
+  renderAll();
+}
+
+function closeTaskSheet(e) {
+  if (e && e.target!==document.getElementById('task-overlay')) return;
+  closeSheet('task-overlay','task-sheet');
+}
+
+// ══════════════════════════════════
+// ADD TASK SHEET
+// ══════════════════════════════════
+let addTaskPerson = null;
+function openAddTask() { openAddTaskFor(null); }
+function openAddTaskFor(pid) {
+  addTaskPerson = pid;
+  document.getElementById('nt-person').innerHTML = people.map(p=>`<option value="${p.id}"${p.id===pid?' selected':''}>${p.name}</option>`).join('');
+  openSheet('add-task-overlay','add-task-sheet');
+}
+function closeAddTask(e) {
+  if (e && e.target!==document.getElementById('add-task-overlay')) return;
+  closeSheet('add-task-overlay','add-task-sheet');
+}
+async function submitNewTask() {
+  const name = document.getElementById('nt-name').value.trim();
+  if (!name) { toast('Task name required','error'); return; }
+  const status = document.getElementById('nt-status').value;
+  const t = {
+    person_id: document.getElementById('nt-person').value,
+    ws: name,
+    resp: document.getElementById('nt-resp').value.trim(),
+    cat: document.getElementById('nt-cat').value.trim()||'General',
+    priority: document.getElementById('nt-priority').value,
+    deadline: document.getElementById('nt-deadline').value.trim()||'TBC',
+    works_with: document.getElementById('nt-workswith').value.trim(),
+    notes: document.getElementById('nt-notes').value.trim(),
+    status, done: status==='done',
+    reports_to:'Zac',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  flash();
+  const { data, error } = await sb.from('gym2026_tasks').insert(t).select().single();
+  if (error) { toast('Failed: '+error.message,'error'); return; }
+  tasks.push(data);
+  ['nt-name','nt-resp','nt-deadline','nt-cat','nt-workswith','nt-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  closeSheet('add-task-overlay','add-task-sheet');
+  toast('Task added ✓','success');
+  renderAll();
+}
+
+// ══════════════════════════════════
+// EDIT MEMBER SHEET
+// ══════════════════════════════════
+function openEditMember(pid) {
+  const p = getPerson(pid);
+  if (!p) return;
+  editMemberId = pid;
+  selectedColor = {bg: p.color_bg, fg: p.color_fg};
+  document.getElementById('em-name').value = p.name;
+  document.getElementById('em-role').value = p.role;
+  const av = document.getElementById('em-avatar');
+  av.style.background = p.color_bg;
+  av.style.color = p.color_fg;
+  av.textContent = initials(p.name);
+
+  document.getElementById('em-colors').innerHTML = COLORS.map(c=>`
+    <div onclick="selectColor('${c.bg}','${c.fg}')"
+      style="width:28px;height:28px;border-radius:50%;background:${c.bg};cursor:pointer;border:2px solid ${selectedColor.bg===c.bg?'white':'transparent'};transition:border 0.15s;flex-shrink:0;" id="ec-${c.bg.replace('#','')}">
+    </div>`).join('');
+  openSheet('edit-member-overlay','edit-member-sheet');
+}
+
+function selectColor(bg, fg) {
+  selectedColor = {bg, fg};
+  document.querySelectorAll('#em-colors div').forEach(el => el.style.borderColor='transparent');
+  const el = document.getElementById('ec-'+bg.replace('#',''));
+  if (el) el.style.borderColor = 'white';
+  const av = document.getElementById('em-avatar');
+  av.style.background = bg; av.style.color = fg;
+}
+
+async function saveEditMember() {
+  if (!editMemberId) return;
+  const name = document.getElementById('em-name').value.trim();
+  const role = document.getElementById('em-role').value.trim();
+  if (!name||!role) { toast('Name and role required','error'); return; }
+  const updates = { name, role, color_bg: selectedColor.bg, color_fg: selectedColor.fg };
+  flash();
+  const { error } = await sb.from('gym2026_people').update(updates).eq('id', editMemberId);
+  if (error) { toast('Save failed','error'); return; }
+  const idx = people.findIndex(p=>p.id===editMemberId);
+  if (idx>=0) people[idx] = {...people[idx],...updates};
+  toast(name+' updated ✓','success');
+  closeSheet('edit-member-overlay','edit-member-sheet');
+  renderAll();
+}
+
+function closeEditMember(e) {
+  if (e && e.target!==document.getElementById('edit-member-overlay')) return;
+  closeSheet('edit-member-overlay','edit-member-sheet');
+}
+
+// ══════════════════════════════════
+// ADD MEMBER SHEET
+// ══════════════════════════════════
+function openAddMember() { openSheet('add-member-overlay','add-member-sheet'); }
+function closeAddMember(e) {
+  if (e && e.target!==document.getElementById('add-member-overlay')) return;
+  closeSheet('add-member-overlay','add-member-sheet');
+}
+async function submitNewMember() {
+  const name = document.getElementById('am-name').value.trim();
+  const role = document.getElementById('am-role').value.trim();
+  if (!name||!role) { toast('Name and role required','error'); return; }
+  const c = COLORS[people.length % COLORS.length];
+  const newP = { id:name.toLowerCase().replace(/\s+/g,'_')+'_'+Date.now(), name, role, color_bg:c.bg, color_fg:c.fg };
+  flash();
+  const { data, error } = await sb.from('gym2026_people').insert(newP).select().single();
+  if (error) { toast('Failed: '+error.message,'error'); return; }
+  people.push(data);
+  document.getElementById('am-name').value='';
+  document.getElementById('am-role').value='';
+  closeSheet('add-member-overlay','add-member-sheet');
+  toast(name+' added ✓','success');
+  renderAll();
+}
+
+// ══════════════════════════════════
+// SHEET HELPERS
+// ══════════════════════════════════
+function openSheet(overlayId, sheetId) {
+  document.getElementById(overlayId).style.display='block';
+  setTimeout(()=>document.getElementById(sheetId).classList.add('open'),10);
+}
+function closeSheet(overlayId, sheetId) {
+  document.getElementById(sheetId).classList.remove('open');
+  setTimeout(()=>document.getElementById(overlayId).style.display='none',300);
+}
+
+// ══════════════════════════════════
+// SEARCH TOGGLE
+// ══════════════════════════════════
+function toggleSearch() {
+  const bar = document.getElementById('search-bar');
+  bar.style.display = bar.style.display==='none' ? 'flex' : 'none';
+  if (bar.style.display==='flex') document.getElementById('search-input').focus();
+  else { document.getElementById('search-input').value=''; renderCurrentView(); }
+}
+
+// ══════════════════════════════════
+// CLAUDE AI ASSISTANT
+// ══════════════════════════════════
+let aiHistory = [];
+let aiTyping = false;
+
+function openAI() {
+  // Deactivate other nav tabs visually
+  document.querySelectorAll('.nav-tab').forEach(n=>n.classList.remove('active'));
+  document.getElementById('nav-ai').classList.add('active');
+  document.getElementById('ai-overlay').style.display='block';
+  setTimeout(()=>document.getElementById('ai-sheet').classList.add('open'),10);
+  if (aiHistory.length===0) {
+    addAIMessage('claude', `Hi! I'm your GYM 2026 assistant. I know your full team of **${people.length} members** and all **${tasks.length} tasks**.\n\nAsk me anything — who owns what, what's critical, progress summaries, or anything about the event.`);
+  }
+}
+
+function closeAI(e) {
+  if (e && e.target!==document.getElementById('ai-overlay')) return;
+  document.getElementById('ai-sheet').classList.remove('open');
+  setTimeout(()=>document.getElementById('ai-overlay').style.display='none',300);
+  document.querySelectorAll('.nav-tab').forEach(n=>n.classList.remove('active'));
+  document.getElementById('nav-list').classList.add('active');
+}
+
+function askSuggestion(el) {
+  document.getElementById('ai-input').value = el.textContent;
+  sendAI();
+}
+
+function aiKeyDown(e) {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendAI(); }
+}
+
+function autoResize(el) {
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,100)+'px';
+}
+
+function buildContext() {
+  const done = tasks.filter(t=>t.done).length;
+  const critical = tasks.filter(t=>t.priority==='Critical'&&!t.done);
+  const inprog = tasks.filter(t=>t.status==='inprogress');
+
+  const teamSummary = people.map(p => {
+    const pt = tasks.filter(t=>t.person_id===p.id);
+    const pdone = pt.filter(t=>t.done).length;
+    return `- ${p.name} (${p.role}): ${pt.length} tasks, ${pdone} done, ${pt.filter(t=>!t.done).length} open`;
+  }).join('\n');
+
+  const taskList = tasks.map(t => {
+    const p = getPerson(t.person_id);
+    return `- [${t.done?'DONE':t.status.toUpperCase()}] ${p?.name||'?'} | ${t.ws} | ${t.priority} | Due: ${t.deadline||'TBC'} | Cat: ${t.cat||'—'}${t.notes?' | Note: '+t.notes:''}`;
+  }).join('\n');
+
+  return `You are a helpful assistant for GYM 2026 (Go For Your Mountain 2026), an intergenerational community climb at Mount Faber on 26 September 2026, organised by Empower Ageing in Singapore. You have full access to the team's task allocation data.
+
+EVENT: GYM 2026 | 26 Sep 2026 | Mount Faber | Empower Ageing | Target: 1,000–2,000 participants | Pairing seniors (60+) with youth volunteers (15–35)
+
+TEAM OVERVIEW (${people.length} members, ${tasks.length} tasks, ${done} done):
+${teamSummary}
+
+CRITICAL OPEN TASKS (${critical.length}):
+${critical.map(t=>`- ${getPerson(t.person_id)?.name}: ${t.ws} | Due: ${t.deadline}`).join('\n')||'None'}
+
+IN PROGRESS (${inprog.length}):
+${inprog.map(t=>`- ${getPerson(t.person_id)?.name}: ${t.ws}`).join('\n')||'None'}
+
+ALL TASKS:
+${taskList}
+
+Answer helpfully and concisely. Use bullet points when listing multiple items. Be direct and action-oriented. If asked about a specific person, focus on their tasks. If asked for a summary, be brief.`;
+}
+
+async function sendAI() {
+  const input = document.getElementById('ai-input');
+  const msg = input.value.trim();
+  if (!msg || aiTyping) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  addAIMessage('user', msg);
+  aiHistory.push({ role:'user', content: msg });
+
+  // Hide suggestions after first message
+  document.getElementById('ai-suggestions').style.display='none';
+
+  aiTyping = true;
+  document.getElementById('ai-send').disabled = true;
+  const typingId = addTypingIndicator();
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: buildContext(),
+        messages: aiHistory,
+      })
+    });
+
+    const data = await response.json();
+    removeTypingIndicator(typingId);
+
+    if (data.content && data.content[0]) {
+      const reply = data.content[0].text;
+      aiHistory.push({ role:'assistant', content: reply });
+      addAIMessage('claude', reply);
+    } else {
+      addAIMessage('claude', 'Sorry, I couldn\'t get a response. Please try again.');
+    }
+  } catch(err) {
+    removeTypingIndicator(typingId);
+    addAIMessage('claude', 'Connection error. Please check your internet and try again.');
+  }
+
+  aiTyping = false;
+  document.getElementById('ai-send').disabled = false;
+  document.getElementById('ai-input').focus();
+}
+
+function addAIMessage(role, text) {
+  const msgs = document.getElementById('ai-messages');
+  const div = document.createElement('div');
+  div.className = `ai-msg ${role}`;
+  const isUser = role==='user';
+
+  // Simple markdown: **bold**, bullet points, line breaks
+  const formatted = text
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .split('\n')
+    .map(line => {
+      if (line.startsWith('- ')) return `<li>${line.slice(2)}</li>`;
+      return line ? `<p>${line}</p>` : '';
+    })
+    .join('')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+
+  div.innerHTML = `
+    <div class="ai-msg-avatar ${isUser?'user-av':'claude'}">${isUser?'Z':'🤖'}</div>
+    <div class="ai-bubble">${formatted}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function addTypingIndicator() {
+  const msgs = document.getElementById('ai-messages');
+  const id = 'typing-'+Date.now();
+  const div = document.createElement('div');
+  div.className = 'ai-msg claude';
+  div.id = id;
+  div.innerHTML = `<div class="ai-msg-avatar claude">🤖</div><div class="ai-bubble"><div class="ai-typing"><span></span><span></span><span></span></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return id;
+}
+
+function removeTypingIndicator(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+// ══════════════════════════════════
+// BOOT
+// ══════════════════════════════════
+boot();
+</script>
+</body>
+</html>
